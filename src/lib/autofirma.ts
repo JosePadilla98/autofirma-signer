@@ -11,14 +11,32 @@ export function isAutoScriptLoaded(): boolean {
 
 /**
  * Initialises the AutoFirma native client.
- * Must be called before sign(). Resolves immediately; connection errors
- * surface later through the sign() error callback.
+ *
+ * On desktop: uses a local WebSocket connection — no servletBaseUrl needed.
+ * On mobile:  uses the intermediate-server mode. Pass the base URL of the
+ *             server where the two AutoFirma servlets are deployed, e.g.
+ *             "https://mi-servidor.com". AutoScript will automatically resolve:
+ *               - /afirma-signature-storage/StorageService
+ *               - /afirma-signature-retriever/RetrieveService
+ *
+ * @param servletBaseUrl - Origin of the servlet server (mobile mode only).
  */
-export function initAutoFirma(): void {
+export function initAutoFirma(servletBaseUrl?: string): void {
   if (!isAutoScriptLoaded()) {
     throw new Error('AutoScript no está cargado. Comprueba que /vendor/autoscript.js está disponible.');
   }
-  window.AutoScript.cargarAppAfirma();
+
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+  if (isMobile && !servletBaseUrl) {
+    throw new Error(
+      'Modo móvil: configura PUBLIC_SERVLET_BASE_URL con la URL del servidor de servlets.',
+    );
+  }
+
+  // Passing servletBaseUrl lets AutoScript derive the two servlet paths from it
+  // and switch to AppAfirmaJSWebService mode on mobile automatically.
+  window.AutoScript.cargarAppAfirma(servletBaseUrl ?? undefined);
 }
 
 /**

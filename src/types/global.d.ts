@@ -1,8 +1,14 @@
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    AutoScript: any;
-  }
+// Ambient declaration file — no imports/exports so all interfaces merge globally.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface Window {
+  AutoScript: any;
 }
 
-export {};
+interface ImportMetaEnv {
+  readonly PUBLIC_SERVLET_BASE_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}

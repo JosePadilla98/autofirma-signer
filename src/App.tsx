@@ -142,6 +142,8 @@ const styles = {
 // ---------------------------------------------------------------------------
 
 const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+const servletBaseUrl = import.meta.env.PUBLIC_SERVLET_BASE_URL?.replace(/\/$/, '') || undefined;
+const mobileReady = !isMobile || !!servletBaseUrl;
 
 let logCounter = 0;
 function makeLog(level: LogEntry['level'], message: string): LogEntry {
@@ -214,8 +216,11 @@ export default function App() {
     }
 
     try {
-      initAutoFirma();
+      initAutoFirma(servletBaseUrl);
       addLog('success', 'AutoFirma inicializado. Intentando conectar…');
+      if (isMobile) {
+        addLog('info', `Modo móvil: usando servidor intermedio en ${servletBaseUrl}.`);
+      }
       addLog(
         'info',
         'La conexión real se verifica al firmar. ' +
@@ -249,8 +254,8 @@ export default function App() {
 
     // 2. Ensure AutoFirma client is initialised
     try {
-      initAutoFirma();
-      addLog('success', 'AutoFirma inicializado.');
+      initAutoFirma(servletBaseUrl);
+      addLog('success', `AutoFirma inicializado${isMobile ? ' (modo móvil)' : ''}.`);
     } catch (err) {
       addLog('error', (err as Error).message);
       setState('error');
@@ -303,6 +308,7 @@ export default function App() {
 
   // ── Derived flags ─────────────────────────────────────────────────────────
   const isBusy = state === 'checking' || state === 'loading' || state === 'signing';
+  const isBlocked = isMobile && !servletBaseUrl;
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -323,26 +329,40 @@ export default function App() {
           </strong>
         </p>
 
-        {/* Mobile warning */}
+        {/* Mobile notice */}
         {isMobile && (
-          <div style={styles.mobileWarning}>
-            ⚠️ La integración con AutoFirma funciona mejor en escritorio. En dispositivos
-            móviles la experiencia puede ser limitada.
-          </div>
+          isBlocked ? (
+            <div style={{ ...styles.mobileWarning, background: '#fef2f2', borderColor: '#fca5a5', color: '#7f1d1d' }}>
+              <strong>⛔ Servidor de servlets no configurado.</strong>
+              <br />
+              Para firmar desde móvil se necesita un servidor con los servlets de AutoFirma desplegados.
+              Configura la variable <code>PUBLIC_SERVLET_BASE_URL</code> en el fichero <code>.env</code> con
+              la URL de ese servidor.
+              <br /><br />
+              Consulta <code>MOBILE_SUPPORT.md</code> para más información.
+            </div>
+          ) : (
+            <div style={styles.mobileWarning}>
+              <strong>📱 Modo móvil activo.</strong>
+              <br />
+              Usando servidor intermedio en <code>{servletBaseUrl}</code>.
+              Asegúrate de tener la app AutoFirma instalada en este dispositivo.
+            </div>
+          )
         )}
 
         {/* Actions */}
         <div style={styles.buttonRow}>
           <button
-            style={styles.btn('secondary', isBusy)}
-            disabled={isBusy}
+            style={styles.btn('secondary', isBusy || isBlocked)}
+            disabled={isBusy || isBlocked}
             onClick={handleCheck}
           >
             Comprobar AutoFirma
           </button>
           <button
-            style={styles.btn('primary', isBusy)}
-            disabled={isBusy}
+            style={styles.btn('primary', isBusy || isBlocked)}
+            disabled={isBusy || isBlocked}
             onClick={handleSign}
           >
             {state === 'signing' ? 'Firmando…' : 'Firmar PDF'}
